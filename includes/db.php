@@ -1,5 +1,8 @@
 <?php
-// Carregar .env se existir (sem depender de bibliotecas externas)
+// 1. Carregar config.php (dados diretos — mais fácil de editar)
+require_once __DIR__ . '/config.php';
+
+// 2. Se existir .env, os valores dele sobrescrevem o config.php
 $envFile = __DIR__ . '/../.env';
 if (file_exists($envFile)) {
     foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
@@ -7,14 +10,15 @@ if (file_exists($envFile)) {
         [$key, $value] = explode('=', $line, 2);
         $key   = trim($key);
         $value = trim($value);
-        if (!getenv($key)) putenv("$key=$value");
+        putenv("$key=$value");
     }
 }
 
-$dbHost = getenv('DB_HOST') ?: 'localhost';
-$dbName = getenv('DB_NAME') ?: 'whatsapp_bot';
-$dbUser = getenv('DB_USER') ?: 'root';
-$dbPass = getenv('DB_PASS') ?: '';
+// 3. Prioridade: .env > config.php
+$dbHost = getenv('DB_HOST') ?: DB_HOST;
+$dbName = getenv('DB_NAME') ?: DB_NAME;
+$dbUser = getenv('DB_USER') ?: DB_USER;
+$dbPass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : DB_PASS;
 
 $db = mysqli_connect($dbHost, $dbUser, $dbPass, $dbName);
 

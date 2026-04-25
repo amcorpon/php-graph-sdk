@@ -84,6 +84,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $step === 2) {
                     $envContent = "DB_HOST=$dbHost\nDB_NAME=$dbName\nDB_USER=$dbUser\nDB_PASS=$dbPass\nNODE_ENV=production\n";
                     file_put_contents(__DIR__ . '/.env', $envContent);
 
+                    // Atualizar includes/config.php com os dados reais
+                    $configFile = __DIR__ . '/includes/config.php';
+                    if (file_exists($configFile)) {
+                        $cfg = file_get_contents($configFile);
+                        $cfg = preg_replace("/define\('DB_HOST',\s*'[^']*'\)/",   "define('DB_HOST', '$dbHost')", $cfg);
+                        $cfg = preg_replace("/define\('DB_NAME',\s*'[^']*'\)/",   "define('DB_NAME', '$dbName')", $cfg);
+                        $cfg = preg_replace("/define\('DB_USER',\s*'[^']*'\)/",   "define('DB_USER', '$dbUser')", $cfg);
+                        $cfg = preg_replace("/define\('DB_PASS',\s*'[^']*'\)/",   "define('DB_PASS', '" . addslashes($dbPass) . "')", $cfg);
+                        file_put_contents($configFile, $cfg);
+                    }
+
                     $step = 3;
                 }
             }
