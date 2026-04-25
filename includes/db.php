@@ -1,4 +1,16 @@
 <?php
+// Carregar .env se existir (sem depender de bibliotecas externas)
+$envFile = __DIR__ . '/../.env';
+if (file_exists($envFile)) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (strpos(trim($line), '#') === 0 || strpos($line, '=') === false) continue;
+        [$key, $value] = explode('=', $line, 2);
+        $key   = trim($key);
+        $value = trim($value);
+        if (!getenv($key)) putenv("$key=$value");
+    }
+}
+
 $dbHost = getenv('DB_HOST') ?: 'localhost';
 $dbName = getenv('DB_NAME') ?: 'whatsapp_bot';
 $dbUser = getenv('DB_USER') ?: 'root';
