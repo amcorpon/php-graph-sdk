@@ -1,8 +1,8 @@
 <?php
 /**
- * Trigger the Python processing pipeline for a project.
- * Downloads media, cuts videos, generates TTS audio.
- * Runs asynchronously in background.
+ * Queue a project for the local Python worker to process.
+ * Sets status → 'queued'. The Python worker running on the user's machine
+ * polls /api/worker/pending_projects.php and picks it up.
  */
 require_once '../db.php';
 requireMethod('POST');
@@ -14,40 +14,44 @@ if (!$project_id) jsonResponse(['error' => 'project_id required'], 400);
 $project = getProject($project_id);
 if (!$project) jsonResponse(['error' => 'Project not found'], 404);
 
-// Gather all config for Python
-$cfg = [
-    'project_id'         => $project_id,
-    'project_title'      => $project['title'],
-    'theme'              => $project['theme'],
-    'voice_provider'     => $project['voice_provider'],
-    'voice_id'           => $project['voice_id'],
-    'language_code'      => $project['language_code'],
-    'claude_api_key'     => getConfig('claude_api_key'),
-    'gemini_api_key'     => getConfig('gemini_api_key'),
-    'google_tts_api_key' => getConfig('google_tts_api_key'),
-    'elevenlabs_api_key' => getConfig('elevenlabs_api_key'),
-    'ffmpeg_bin'         => getConfig('ffmpeg_bin', 'ffmpeg'),
-    'sections'           => getProjectSections($project_id),
-    'output_dir'         => projectDir($project_id, $project['title']),
-];
+// Verify worker token is configured
+$token = getConfig('worker_api_token');
+if (!$token) {
+    jsonResponse([
+        'error' => 'Worker API token not configured. Go to Settings → Worker Setup and generate a token first.',
+    ], 400);
+}
 
-// Write config JSON to temp file
-$cfg_file = sys_get_temp_dir() . "/vsg_project_{$project_id}.json";
-file_put_contents($cfg_file, json_encode($cfg, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+// Reset section statuses so worker re-processes
+$db = getDB();
+mysqli_query($db, "UPDATE vsg_sections
+    SET status='confirmed'
+    WHERE project_id=$project_id
+    AND section_type IN ('broll_image','broll_video')
+    AND status IN ('downloading','processing','done','error')");
 
-$python  = getConfig('python_bin', 'python3');
-$script  = escapeshellarg(dirname(__DIR__) . '/python/process_project.py');
-$cfg_arg = escapeshellarg($cfg_file);
-$log_file = dirname(__DIR__) . "/projects/project_{$project_id}.log";
+// Narration/overlay sections back to pending
+mysqli_query($db, "UPDATE vsg_sections
+    SET status='pending'
+    WHERE project_id=$project_id
+    AND section_type IN ('narration','text_overlay')");
 
-// Run in background
-$cmd = "$python $script $cfg_arg > " . escapeshellarg($log_file) . " 2>&1 &";
-exec($cmd);
+// Clear old log
+$log_file = VSG_ROOT . "/projects/project_{$project_id}.log";
+if (is_dir(VSG_ROOT . '/projects')) {
+    file_put_contents($log_file, '');
+}
 
-updateProjectStatus($project_id, 'processing');
+updateProjectStatus($project_id, 'queued');
+
+$server_url  = getConfig('server_public_url', '');
+$instructions = $server_url
+    ? "Run on your local machine:\n  python3 worker.py --server $server_url"
+    : "Configure Server Public URL in Settings, then run:\n  python3 worker.py --server https://yourserver.com/video-script-generator";
 
 jsonResponse([
-    'success'  => true,
-    'message'  => 'Processing started in background',
-    'log_file' => "projects/project_{$project_id}.log",
+    'success'      => true,
+    'status'       => 'queued',
+    'project_id'   => $project_id,
+    'instructions' => $instructions,
 ]);

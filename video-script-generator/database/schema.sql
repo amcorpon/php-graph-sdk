@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS `vsg_projects` (
   `voice_provider`   ENUM('google','elevenlabs') DEFAULT 'google',
   `voice_id`         VARCHAR(200) DEFAULT 'en-US-Neural2-F',
   `language_code`    VARCHAR(20) DEFAULT 'en-US',
-  `status`           ENUM('draft','generating','script_ready','searching_media','media_ready','processing','completed','error') DEFAULT 'draft',
+  `status`           ENUM('draft','generating','script_ready','searching_media','media_ready','queued','processing','completed','error') DEFAULT 'draft',
   `output_path`      VARCHAR(500),
   `error_message`    TEXT,
   `created_at`       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -78,6 +78,9 @@ INSERT IGNORE INTO `vsg_config` (`config_key`, `config_value`) VALUES
   ('db_user',              'root'),
   ('db_pass',              ''),
   ('db_name',              'video_script_gen'),
-  ('python_bin',           'python3'),
   ('ffmpeg_bin',           'ffmpeg'),
-  ('output_base_path',     '');
+  ('worker_api_token',     ''),
+  ('server_public_url',    '');
+
+-- Migration: add 'queued' to projects status ENUM if upgrading from older version
+-- ALTER TABLE vsg_projects MODIFY status ENUM('draft','generating','script_ready','searching_media','media_ready','queued','processing','completed','error') DEFAULT 'draft';

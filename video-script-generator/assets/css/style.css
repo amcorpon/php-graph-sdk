@@ -452,9 +452,21 @@ main { padding-top: 24px; }
 .status-script_ready   { background: rgba(245,158,11,.2);  color: var(--warning); }
 .status-searching_media { background: rgba(124,58,237,.2); color: var(--accent-light); }
 .status-media_ready    { background: rgba(245,158,11,.2);  color: var(--warning); }
+.status-queued         { background: rgba(245,158,11,.25); color: var(--warning); }
 .status-processing     { background: rgba(59,130,246,.2);  color: var(--info); }
 .status-completed      { background: rgba(16,185,129,.2);  color: var(--success); }
 .status-error          { background: rgba(239,68,68,.2);   color: var(--danger); }
+
+.queued-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: rgba(245,158,11,.08);
+  border: 1px solid rgba(245,158,11,.3);
+  border-radius: var(--radius-sm);
+}
 
 .project-progress {
   height: 4px;

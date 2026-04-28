@@ -407,8 +407,25 @@ async function loadProjectActionBar() {
 async function processProject(project_id) {
   const data = await apiFetch('api/process_project.php', { project_id });
   if (data.error) { alert('Error: ' + data.error); return; }
-  loadProjectDetail(project_id);
+
+  // Show "queued" instructions to user
+  const bar = document.getElementById('action-bar');
+  if (bar) {
+    bar.innerHTML = `
+      <div class="queued-notice">
+        <span class="status-badge status-queued">⏳ Queued</span>
+        <span style="font-size:.85rem;color:var(--text-muted)">
+          Run the Python worker on your local machine to start processing.
+        </span>
+        <button class="btn btn-sm btn-outline" onclick="showQueuedHelp()">📋 How?</button>
+      </div>`;
+  }
   startPolling(project_id);
+}
+
+function showQueuedHelp() {
+  const msg = `Your project is queued!\n\nRun on your local machine:\n\n  python3 worker.py\n\nMake sure worker_config.json has the correct server_url and api_token.\nGenerate the token at: Server Settings → Worker Setup`;
+  alert(msg);
 }
 
 function startPolling(project_id) {
