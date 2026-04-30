@@ -95,6 +95,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $step === 2) {
                         file_put_contents($configFile, $cfg);
                     }
 
+                    // Instalar dependências Node.js do bot automaticamente
+                    $npmOutput  = '';
+                    $npmSuccess = false;
+                    $botDir     = realpath(__DIR__ . '/bot');
+
+                    if (!function_exists('shell_exec')) {
+                        $npmOutput = 'shell_exec desabilitado no PHP. Rode manualmente: <code>cd bot && npm install</code>';
+                    } elseif (!$botDir || !is_dir($botDir)) {
+                        $npmOutput = 'Pasta bot/ não encontrada. Rode manualmente: <code>cd bot && npm install</code>';
+                    } else {
+                        $escaped   = escapeshellarg($botDir);
+                        $rawOutput = shell_exec("cd $escaped && npm install --production 2>&1");
+                        if ($rawOutput === null) {
+                            $npmOutput = 'npm não pôde ser executado. Rode manualmente: <code>cd bot && npm install</code>';
+                        } else {
+                            $npmOutput  = $rawOutput;
+                            $npmSuccess = stripos($rawOutput, 'error') === false && trim($rawOutput) !== '';
+                        }
+                    }
+
                     $step = 3;
                 }
             }
@@ -240,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $step === 2) {
   <div class="success-box">
     <div class="success-icon">🎉</div>
     <h2>Instalação Concluída!</h2>
-    <p style="font-size:13.5px;color:#374151">O WhatsApp AI Bot foi instalado com sucesso.</p>
+    <p style="font-size:13.5px;color:#374151">Banco de dados criado, usuários configurados.</p>
 
     <div class="links">
       <a href="/admin/login.php" class="link-btn primary">🤖 Painel Admin</a>
@@ -248,15 +268,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $step === 2) {
     </div>
   </div>
 
+  <!-- Resultado do npm install -->
+  <?php if (!empty($npmSuccess)): ?>
+  <div class="alert-success" style="margin-top:20px">
+    ✅ <strong>Dependências Node.js instaladas com sucesso!</strong> O bot está pronto para iniciar.
+  </div>
+  <?php elseif (!empty($npmOutput)): ?>
+  <div class="alert-error" style="margin-top:20px">
+    ⚠️ <strong>npm install — atenção:</strong><br>
+    <?= nl2br(htmlspecialchars($npmOutput)) ?>
+    <br><br>Se houver erros, rode manualmente no servidor:<br>
+    <code style="background:#fee2e2;padding:4px 8px;border-radius:4px;font-size:12px">cd <?= htmlspecialchars(realpath(__DIR__ . '/bot') ?: __DIR__ . '/bot') ?> &amp;&amp; npm install</code>
+  </div>
+  <?php endif; ?>
+
   <div class="warning-box">
     ⚠️ <strong>Importante:</strong> Delete ou mova o arquivo <code>install.php</code> do servidor para evitar re-instalação acidental.
     <br><br>
     <strong>Próximos passos:</strong>
     <ol style="margin-top:8px;padding-left:18px;line-height:2">
       <li>Acesse o <strong>Painel Admin</strong> → Configurações de IA e adicione sua chave de API</li>
-      <li>Configure o nome e número do bot</li>
-      <li>Acesse o <strong>Painel Admin</strong> → Configurações do Bot → Iniciar</li>
-      <li>Digite o código de emparelhamento no WhatsApp</li>
+      <li>Configure o nome e número do bot em <strong>Configurações do Bot</strong></li>
+      <li>Clique em <strong>Iniciar Bot</strong> no painel</li>
+      <li>Digite o código de emparelhamento que aparecer no WhatsApp</li>
     </ol>
   </div>
   <?php endif; ?>

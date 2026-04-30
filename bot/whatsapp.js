@@ -5,29 +5,31 @@ const {
   fetchLatestBaileysVersion,
   isJidBroadcast,
   isJidGroup,
-  makeCacheableSignalKeyStore
+  makeCacheableSignalKeyStore,
+  downloadMediaMessage
 } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const path = require('path');
 const pino = require('pino');
 const db = require('./utils/db');
 const messageHandler = require('./handlers/message');
+const groq = require('./ai/groq');
 
 const AUTH_DIR = path.join(__dirname, '../bot_auth');
 let sock = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECTS = 100;
+const logger = pino({ level: 'silent' }); // exposto para downloadMediaMessage
 
 async function connectToWhatsApp(phoneNumber) {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version } = await fetchLatestBaileysVersion();
-  const logger = pino({ level: 'silent' });
 
   sock = makeWASocket({
     version,
     auth: {
       creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, logger)
+      keys: makeCacheableSignalKeyStore(state.keys, logger),
     },
     logger,
     printQRInTerminal: false,
@@ -96,6 +98,37 @@ async function connectToWhatsApp(phoneNumber) {
       if (isJidGroup(msg.key.remoteJid)) continue;
 
       const jid = msg.key.remoteJid;
+      const m   = msg.message;
+
+      // ── Áudio (voz ou arquivo de áudio) ──────────────────────────
+      const isAudio = !!(m.audioMessage || m.pttMessage);
+      if (isAudio) {
+        const audioMsg  = m.audioMessage || m.pttMessage;
+        const mimetype  = audioMsg.mimetype || 'audio/ogg; codecs=opus';
+        console.log(`🎤 [${jid}] Áudio recebido (${mimetype}). Transcrevendo...`);
+        try {
+          const groqKey = await db.queryOne('SELECT api_key FROM ai_keys WHERE provider = ? AND is_active = 1 LIMIT 1', ['groq']);
+          if (!groqKey) {
+            await sock.sendMessage(jid, { text: 'Não consigo ouvir áudios ainda. Pode me enviar uma mensagem de texto? 😊' });
+            continue;
+          }
+          const buffer       = await downloadMediaMessage(msg, 'buffer', {}, { logger, reuploadRequest: sock.updateMediaMessage });
+          const transcribed  = await groq.transcribeAudio(groqKey.api_key, buffer, mimetype);
+          if (!transcribed) {
+            await sock.sendMessage(jid, { text: 'Não consegui entender o áudio. Pode repetir em texto? 😊' });
+            continue;
+          }
+          console.log(`📝 [${jid}] Transcrição: ${transcribed.substring(0, 80)}`);
+          await messageHandler.handle(sock, jid, transcribed);
+        } catch (err) {
+          await db.log('error', 'whatsapp', `Erro ao transcrever áudio: ${err.message}`, { jid });
+          console.error('Erro ao transcrever áudio:', err.message);
+          await sock.sendMessage(jid, { text: 'Tive um problema ao ouvir o áudio. Pode me enviar em texto? 😊' });
+        }
+        continue;
+      }
+
+      // ── Texto normal ──────────────────────────────────────────────
       const text = extractMessageText(msg);
       if (!text || text.trim().length === 0) continue;
 

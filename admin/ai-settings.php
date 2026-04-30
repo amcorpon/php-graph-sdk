@@ -153,6 +153,69 @@ include __DIR__ . '/../includes/layout-admin.php';
   <?php endforeach; ?>
 </div>
 
+<!-- Groq — Transcrição de Áudio (separado dos provedores de chat) -->
+<div class="card mt-3">
+  <div class="card-header" style="border-top:3px solid #f97316">
+    <div class="card-title">🎤 Transcrição de Áudio — Groq Whisper</div>
+    <?php if (isset($keysByProv['groq'])): ?>
+      <span class="badge <?= $keysByProv['groq']['is_active'] ? 'badge-success' : 'badge-secondary' ?>">
+        <?= $keysByProv['groq']['is_active'] ? 'Ativa' : 'Inativa' ?>
+      </span>
+    <?php endif; ?>
+  </div>
+  <div class="card-body">
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+      Quando o cliente enviar um <strong>áudio ou mensagem de voz</strong>, o Groq transcreve
+      silenciosamente e o bot responde como se tivesse entendido o áudio normalmente.
+      Modelo fixo: <code>whisper-large-v3-turbo</code>.
+    </p>
+
+    <?php if (isset($keysByProv['groq']) && $keysByProv['groq']['credits_exhausted']): ?>
+      <div class="alert alert-warning" style="margin-bottom:14px;padding:10px 12px;font-size:12px">
+        ⚠️ Créditos possivelmente esgotados.
+        <button onclick="resetCredits('groq')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;text-decoration:underline">Resetar</button>
+      </div>
+    <?php endif; ?>
+
+    <div class="form-group">
+      <label class="form-label">Chave de API Groq</label>
+      <div style="position:relative">
+        <input type="password" id="key-groq" class="form-control" placeholder="gsk_..." style="padding-right:42px">
+        <?php if (isset($keysByProv['groq'])): ?>
+          <div style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text-muted)">
+            <?= substr($keysByProv['groq']['api_key'], 0, 4) ?>...
+          </div>
+        <?php endif; ?>
+      </div>
+      <div class="form-hint">
+        <a href="https://console.groq.com/" target="_blank" style="color:var(--accent)">Obter chave no Groq Console ↗</a>
+        &nbsp;|&nbsp; Plano gratuito inclui cota generosa de transcrições.
+      </div>
+    </div>
+
+    <!-- modelo fixo passado como hidden para o saveKey() genérico funcionar -->
+    <input type="hidden" id="model-groq" value="whisper-large-v3-turbo">
+
+    <div class="form-group">
+      <label class="form-check">
+        <input type="checkbox" id="active-groq" <?= (isset($keysByProv['groq']) && $keysByProv['groq']['is_active']) ? 'checked' : '' ?>>
+        <span>Habilitada</span>
+      </label>
+    </div>
+
+    <button onclick="saveKey('groq')" class="btn btn-primary w-full">
+      <i class="fa-solid fa-floppy-disk"></i> Salvar Chave Groq
+    </button>
+
+    <?php if (isset($keysByProv['groq'])): ?>
+      <button onclick="deleteKey('groq')" class="btn btn-outline btn-sm w-full mt-1"
+              style="color:var(--danger);border-color:var(--danger)">
+        <i class="fa-solid fa-trash"></i> Remover
+      </button>
+    <?php endif; ?>
+  </div>
+</div>
+
 <script>
 const activeAI = document.getElementById('active-ai-value');
 

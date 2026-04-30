@@ -60,7 +60,7 @@ VALUES (
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `ai_keys` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `provider` enum('claude','gemini','gpt') NOT NULL,
+  `provider` enum('claude','gemini','gpt','groq') NOT NULL,
   `api_key` varchar(500) NOT NULL,
   `model` varchar(100) DEFAULT NULL COMMENT 'Modelo específico a usar',
   `is_active` tinyint(1) NOT NULL DEFAULT 1,

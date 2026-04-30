@@ -21,7 +21,7 @@ if ($method === 'POST') {
     $model    = trim($data['model'] ?? '');
     $isActive = (int)($data['is_active'] ?? 1);
 
-    $allowed = ['claude', 'gemini', 'gpt'];
+    $allowed = ['claude', 'gemini', 'gpt', 'groq'];
     if (!in_array($provider, $allowed)) jsonError('Provedor inválido');
     if (empty($apiKey)) jsonError('Chave de API é obrigatória');
 
@@ -42,7 +42,7 @@ if ($method === 'POST') {
 
 if ($method === 'DELETE') {
     $provider = $_GET['provider'] ?? '';
-    if (!in_array($provider, ['claude','gemini','gpt'])) jsonError('Provedor inválido');
+    if (!in_array($provider, ['claude','gemini','gpt','groq'])) jsonError('Provedor inválido');
     dbExecute($db, 'DELETE FROM ai_keys WHERE provider = ?', [$provider]);
     jsonSuccess([], 'Chave removida!');
 }
