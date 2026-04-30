@@ -57,6 +57,23 @@ switch ($provider) {
         jsonResponse(['success'=>$ok, 'error'=>$ok ? '' : "HTTP $status"]);
         break;
 
+    case 'youtube':
+        $key = getConfig('youtube_api_key');
+        if (!$key) { jsonResponse(['success'=>false,'error'=>'API key not configured']); }
+        $ch  = curl_init("https://www.googleapis.com/youtube/v3/search?part=snippet&q=test&maxResults=1&type=video&key=$key");
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>10]);
+        $body   = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $data   = json_decode($body, true);
+        $ok     = $status === 200 && isset($data['items']);
+        $err    = '';
+        if (!$ok) {
+            $err = $data['error']['message'] ?? "HTTP $status";
+        }
+        jsonResponse(['success'=>$ok, 'error'=>$err]);
+        break;
+
     default:
         jsonResponse(['success'=>false,'error'=>'Unknown provider']);
 }

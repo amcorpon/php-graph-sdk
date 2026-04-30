@@ -95,7 +95,6 @@
           <h3>Pexels</h3>
           <p>Free stock images &amp; videos (B-ROLL) — runs on server</p>
         </div>
-        <div class="badge badge-required">Required</div>
       </div>
       <div class="form-row">
         <label>API Key</label>
@@ -103,10 +102,35 @@
           <input type="password" id="pexels_api_key" name="pexels_api_key" placeholder="Your Pexels API key" autocomplete="off">
           <button type="button" class="toggle-visibility" data-target="pexels_api_key">👁</button>
         </div>
-        <small>Free key at <a href="https://www.pexels.com/api/" target="_blank">pexels.com/api</a></small>
+        <small>Free key at <a href="https://www.pexels.com/api/" target="_blank">pexels.com/api</a> — good for nature, people, business</small>
       </div>
       <button type="button" class="btn btn-sm btn-outline" onclick="testApi('pexels')">Test Connection</button>
       <span id="pexels-test-result" class="test-result"></span>
+    </div>
+
+    <!-- YouTube -->
+    <div class="config-card">
+      <div class="config-card-header">
+        <span class="provider-icon yt-icon">▶</span>
+        <div>
+          <h3>YouTube Data API v3</h3>
+          <p>Search YouTube for B-ROLL — films, Bible, documentaries, music</p>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>API Key</label>
+        <div class="input-with-toggle">
+          <input type="password" id="youtube_api_key" name="youtube_api_key" placeholder="AIza..." autocomplete="off">
+          <button type="button" class="toggle-visibility" data-target="youtube_api_key">👁</button>
+        </div>
+        <small>Free key at <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> → Enable "YouTube Data API v3"</small>
+      </div>
+      <div class="yt-notice">
+        ⚠️ YouTube videos may be copyrighted. Download is for personal editing only.
+        The Python worker uses <code>yt-dlp</code> to download selected videos locally.
+      </div>
+      <button type="button" class="btn btn-sm btn-outline" onclick="testApi('youtube')">Test Connection</button>
+      <span id="youtube-test-result" class="test-result"></span>
     </div>
 
     <!-- Google TTS -->

@@ -72,6 +72,7 @@ INSERT IGNORE INTO `vsg_config` (`config_key`, `config_value`) VALUES
   ('claude_api_key',       ''),
   ('gemini_api_key',       ''),
   ('pexels_api_key',       ''),
+  ('youtube_api_key',      ''),
   ('elevenlabs_api_key',   ''),
   ('google_tts_api_key',   ''),
   ('db_host',              'localhost'),

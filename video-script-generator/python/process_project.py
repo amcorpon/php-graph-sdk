@@ -102,9 +102,13 @@ def _process_video(client, project_id, sec, seq, raw_dir, out_dir, worker_config
     raw_file     = os.path.join(raw_dir, f"{seq}_broll_video_raw.mp4")
     final_file   = os.path.join(out_dir, f"{seq}_broll_video.mp4")
 
+    is_yt = _is_youtube(media_url)
+    source_label = 'YouTube' if is_yt else 'Pexels'
+
     client.update_section(sec_id, 'downloading')
+    log.info(f"  Downloading from {source_label}: {media_url}")
     _download(media_url, raw_file)
-    log.info(f"  Downloaded: {raw_file}")
+    log.info(f"  Downloaded: {os.path.getsize(raw_file) // 1024} KB → {raw_file}")
 
     cut_start = sec.get('cut_start') or ''
     cut_end   = sec.get('cut_end')   or ''
@@ -289,7 +293,20 @@ def _cut_video(ffmpeg: str, inp: str, out: str, start: str, end: str, dur: int):
         raise RuntimeError(f"ffmpeg error: {result.stderr[-400:]}")
 
 
+def _is_youtube(url: str) -> bool:
+    return 'youtube.com/watch' in url or 'youtu.be/' in url
+
+
 def _download(url: str, dest: str, retries: int = 3):
+    """Route to the correct downloader based on URL."""
+    if _is_youtube(url):
+        _download_youtube(url, dest)
+    else:
+        _download_http(url, dest, retries)
+
+
+def _download_http(url: str, dest: str, retries: int = 3):
+    """Direct HTTP download for Pexels and other direct-link sources."""
     for attempt in range(retries):
         try:
             resp = requests.get(url, stream=True, timeout=60,
@@ -303,7 +320,55 @@ def _download(url: str, dest: str, retries: int = 3):
             if attempt < retries - 1:
                 time.sleep(2 ** attempt)
             else:
-                raise RuntimeError(f"Download failed ({url}): {e}")
+                raise RuntimeError(f"HTTP download failed ({url}): {e}")
+
+
+def _download_youtube(url: str, dest: str):
+    """
+    Download a YouTube video with yt-dlp.
+    Tries up to 1080p, re-encodes to mp4 so ffmpeg can process it later.
+    dest should end in .mp4
+    """
+    import yt_dlp
+
+    dest_base = dest[:-4] if dest.endswith('.mp4') else dest  # strip .mp4 for yt-dlp template
+
+    ydl_opts = {
+        # Best video ≤1080p + best audio, merged into mp4
+        'format': (
+            'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]'
+            '/bestvideo[height<=1080]+bestaudio'
+            '/best[height<=1080]'
+            '/best'
+        ),
+        'outtmpl':              dest_base + '.%(ext)s',
+        'merge_output_format':  'mp4',
+        'quiet':                True,
+        'no_warnings':          True,
+        'noprogress':           True,
+        # Throttle to avoid rate-limits; retries on transient errors
+        'retries':              5,
+        'fragment_retries':     5,
+        'http_chunk_size':      10 * 1024 * 1024,  # 10 MB chunks
+        # Cookies / auth can be added here if needed
+        # 'cookiesfrombrowser': ('chrome',),
+    }
+
+    log.info(f"  yt-dlp downloading: {url}")
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        log.info(f"  yt-dlp done: {info.get('title','?')} [{info.get('duration',0)}s]")
+
+    # yt-dlp may produce dest_base.mp4 or dest_base.mkv etc.
+    # Normalise to the expected dest path.
+    for ext in ['mp4', 'mkv', 'webm', 'mov']:
+        candidate = f"{dest_base}.{ext}"
+        if os.path.exists(candidate):
+            if candidate != dest:
+                os.rename(candidate, dest)
+            return
+
+    raise RuntimeError(f"yt-dlp finished but output file not found near: {dest_base}")
 
 
 def _fmt_time(seconds: float) -> str:

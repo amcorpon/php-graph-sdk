@@ -289,26 +289,62 @@ function toggleSection(id) {
 // ---------------------------------------------------------------------------
 // Media section rendering
 // ---------------------------------------------------------------------------
+function mediaCardHTML(opt, idx, sec) {
+  const selected   = sec.selected_option == idx && sec.status === 'confirmed';
+  const isYT       = opt.source === 'youtube';
+  const srcBadge   = isYT
+    ? `<span class="source-badge src-youtube">▶ YouTube</span>`
+    : `<span class="source-badge src-pexels">Pexels</span>`;
+
+  const durLabel = opt.duration > 0
+    ? `<span class="video-badge">⏱ ${fmtDur(opt.duration)}</span>`
+    : '';
+
+  const labelHTML = isYT
+    ? `<div class="media-option-label yt-label">
+         ${escHTML(opt.title || '')}
+         <span class="yt-channel">${escHTML(opt.channel || '')}</span>
+       </div>`
+    : `<div class="media-option-label">${escHTML(opt.title || opt.alt || '#' + opt.id)}</div>`;
+
+  // For YouTube, open watch page on middle-click (don't interfere with select)
+  const ytLink = isYT ? `data-yturl="${opt.link}"` : '';
+
+  return `
+<div class="media-option ${selected ? 'selected' : ''}"
+     onclick="selectMedia(${sec.id}, ${idx})"
+     ${ytLink}
+     title="${escHTML(opt.title || opt.alt || '')}">
+  <img src="${opt.thumb}" loading="lazy" alt="${escHTML(opt.title || '')}">
+  ${srcBadge}
+  ${durLabel}
+  ${labelHTML}
+</div>`;
+}
+
 function mediaSectionHTML(sec) {
-  const options = JSON.parse(sec.media_options || '[]');
+  const options   = JSON.parse(sec.media_options || '[]');
   const typeLabel = sec.section_type === 'broll_image' ? '🖼 Image' : '🎬 Video';
+
+  // Count sources
+  const ytCount  = options.filter(o => o.source === 'youtube').length;
+  const pxCount  = options.filter(o => o.source === 'pexels').length;
+  const srcSummary = options.length
+    ? `<span class="chip" style="margin-left:8px">
+         ${pxCount > 0 ? `<span style="color:#05b45f">${pxCount} Pexels</span>` : ''}
+         ${pxCount > 0 && ytCount > 0 ? ' · ' : ''}
+         ${ytCount > 0 ? `<span style="color:#ff6666">${ytCount} YouTube</span>` : ''}
+       </span>` : '';
 
   let optionsHTML = '';
   if (options.length) {
     optionsHTML = `<div class="media-options">
-      ${options.map((opt, i) => {
-        const selected = sec.selected_option == i && sec.status === 'confirmed';
-        return `<div class="media-option ${selected ? 'selected' : ''}" onclick="selectMedia(${sec.id}, ${i})" title="${opt.alt || opt.description || ''}">
-          <img src="${opt.thumb}" loading="lazy" alt="${opt.alt || ''}">
-          ${opt.type === 'video' ? `<span class="video-badge">▶ ${opt.duration}s</span>` : ''}
-          <div class="media-option-label">${opt.alt || '#'+opt.id}</div>
-        </div>`;
-      }).join('')}
+      ${options.map((opt, i) => mediaCardHTML(opt, i, sec)).join('')}
     </div>`;
   } else if (sec.status === 'found' || sec.status === 'confirmed') {
-    optionsHTML = '<p class="text-muted" style="font-size:.85rem">No media options found for this section.</p>';
+    optionsHTML = '<p class="text-muted" style="font-size:.85rem">No results found. Try a different search.</p>';
   } else {
-    optionsHTML = '<p class="text-muted" style="font-size:.85rem">Media not searched yet.</p>';
+    optionsHTML = '<p class="text-muted" style="font-size:.85rem">Click "Search B-ROLL Media" to find options.</p>';
   }
 
   return `
@@ -316,21 +352,36 @@ function mediaSectionHTML(sec) {
   <div class="section-header-row" onclick="toggleMediaSection(${sec.id})">
     <span class="section-seq">${String(sec.sequence_number).padStart(3,'0')}</span>
     <span class="section-type-tag ${sec.section_type === 'broll_image' ? 'type-broll_image' : 'type-broll_video'}">${typeLabel}</span>
-    <span class="section-text">${sec.description || sec.narration_text || ''}</span>
+    <span class="section-text">${escHTML(sec.description || sec.narration_text || '')}</span>
     <span class="section-dur">${sec.duration_seconds}s</span>
+    ${srcSummary}
     <span class="section-status-dot ${sec.status === 'confirmed' ? 'dot-confirmed' : sec.status === 'found' ? 'dot-found' : 'dot-pending'}" title="${sec.status}"></span>
   </div>
   <div class="section-body" id="media-sec-body-${sec.id}" style="padding-top:16px;">
     ${sec.status === 'confirmed' && sec.media_thumb
-      ? `<div style="margin-bottom:12px;padding:8px;background:rgba(16,185,129,.1);border:1px solid var(--success);border-radius:6px;font-size:.82rem;color:var(--success)">
-           ✅ Confirmed: <img src="${sec.media_thumb}" style="height:32px;border-radius:3px;vertical-align:middle;margin-left:6px">
+      ? `<div class="confirmed-banner" style="margin-bottom:12px;padding:8px;background:rgba(16,185,129,.1);border:1px solid var(--success);border-radius:6px;font-size:.82rem;color:var(--success)">
+           ✅ Confirmed
+           ${sec.media_source === 'youtube' ? '<span style="color:#ff6666;margin-left:4px">▶ YouTube</span>' : '<span style="color:#05b45f;margin-left:4px">Pexels</span>'}
+           <img src="${sec.media_thumb}" style="height:32px;border-radius:3px;vertical-align:middle;margin-left:8px" onerror="this.style.display='none'">
          </div>` : ''}
     ${optionsHTML}
-    <div style="display:flex;gap:8px;margin-top:8px">
+    <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
       <button class="btn btn-sm btn-outline" onclick="researchSection(${sec.id}, ${_currentProjectId})">↻ New Search</button>
+      ${ytCount > 0 ? `<span style="font-size:.75rem;color:var(--text-muted)">⚠️ YouTube videos are downloaded by your local Python worker.</span>` : ''}
     </div>
   </div>
 </div>`;
+}
+
+// Helpers
+function fmtDur(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m > 0 ? `${m}m${s > 0 ? s + 's' : ''}` : `${s}s`;
+}
+
+function escHTML(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function toggleMediaSection(id) {
