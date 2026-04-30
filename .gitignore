@@ -1,3 +1,11 @@
 vendor/
 composer.lock
 tests/FacebookTestCredentials.php
+
+# Bot WhatsApp
+bot/node_modules/
+bot_auth/
+.env
+logs/*.log
+.DS_Store
+Thumbs.db
