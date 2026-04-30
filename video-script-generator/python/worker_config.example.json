@@ -1,0 +1,6 @@
+{
+  "server_url":     "https://yourserver.com/video-script-generator",
+  "api_token":      "PASTE_TOKEN_FROM_SETTINGS_PAGE_HERE",
+  "local_work_dir": "/tmp/videoscript_work",
+  "ffmpeg_bin":     "ffmpeg"
+}
